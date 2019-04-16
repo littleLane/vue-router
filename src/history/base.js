@@ -24,6 +24,9 @@ export class History {
   errorCbs: Array<Function>;
 
   // implemented by sub-classes
+  // 前面的 ➕ 代表 read-only
+  // 前面还可以是 ➖ 代表 write-only
+  // https://flow.org/en/docs/types/interfaces/#toc-interface-property-variance-read-only-and-write-only
   +go: (n: number) => void;
   +push: (loc: RawLocation) => void;
   +replace: (loc: RawLocation) => void;
@@ -61,11 +64,23 @@ export class History {
     this.errorCbs.push(errorCb)
   }
 
+  // 处理路由变化中的基础逻辑
+  // 参数 location：是当前的路径
+  // 参数 onComplete：是路由切换完成后的回调
+  // 参数 onAbort：是路由切换失败后的回调
   transitionTo (location: RawLocation, onComplete?: Function, onAbort?: Function) {
+    // 调用 match 得到匹配的 route 对象
     const route = this.router.match(location, this.current)
+
+    // 确认过度
     this.confirmTransition(route, () => {
+      // 实质的路由切换，更新当前的 route 对象
       this.updateRoute(route)
       onComplete && onComplete(route)
+
+      // 子类实现的更新 url 地址
+      // 对于 hash 模式的话 就是更新 hash 的值
+      // 对于 history 模式的话 就是利用 pushstate / replacestate 来更新浏览器地址
       this.ensureURL()
 
       // fire ready cbs once
@@ -84,6 +99,7 @@ export class History {
     })
   }
 
+  // 确认过度
   confirmTransition (route: Route, onComplete: Function, onAbort?: Function) {
     const current = this.current
     const abort = err => {
@@ -97,6 +113,7 @@ export class History {
       }
       onAbort && onAbort(err)
     }
+    // 如果路由相同就直接返回
     if (
       isSameRoute(route, current) &&
       // in the case the route map has been dynamically appended to
@@ -106,27 +123,43 @@ export class History {
       return abort()
     }
 
+    // 交叉比对当前路由的路由记录和现在的这个路由的路由记录
+    // 以便能准确得到父子路由更新的情况下可以确切的知道
+    // 哪些组件需要更新 哪些不需要更新
     const {
       updated,
       deactivated,
       activated
     } = resolveQueue(this.current.matched, route.matched)
 
+    // 整个路由切换生命周期队列
     const queue: Array<?NavigationGuard> = [].concat(
       // in-component leave guards
+      // leave 钩子
       extractLeaveGuards(deactivated),
+
       // global before hooks
+      // 全局 router before hooks
       this.router.beforeHooks,
+
       // in-component update hooks
+      // update 钩子
       extractUpdateHooks(updated),
+
       // in-config enter guards
+      // 将要更新的路由的 beforeEnter 钩子
       activated.map(m => m.beforeEnter),
+
       // async components
+      // 异步组件
       resolveAsyncComponents(activated)
     )
 
     this.pending = route
+
+    // 每个队列执行的 iterator 函数
     const iterator = (hook: NavigationGuard, next) => {
+      // 确保期间还是当前路由
       if (this.pending !== route) {
         return abort()
       }
@@ -160,14 +193,20 @@ export class History {
       }
     }
 
+    // 执行队列
     runQueue(queue, iterator, () => {
       const postEnterCbs = []
       const isValid = () => this.current === route
       // wait until async components are resolved before
       // extracting in-component enter guards
+      // 组件内的钩子
       const enterGuards = extractEnterGuards(activated, postEnterCbs, isValid)
       const queue = enterGuards.concat(this.router.resolveHooks)
+
+      // 在上次的队列执行完成后再执行组件内的钩子
+      // 因为需要等异步组件以及是 OK 的情况下才能执行
       runQueue(queue, iterator, () => {
+        // 确保期间还是当前路由
         if (this.pending !== route) {
           return abort()
         }
@@ -182,20 +221,32 @@ export class History {
     })
   }
 
+  // 更新当前 route 对象
   updateRoute (route: Route) {
     const prev = this.current
     this.current = route
+
+    // 注意 cb 的值，每次更新都会调用 下边需要用到！
     this.cb && this.cb(route)
+
+    // 执行 after hooks 回调
     this.router.afterHooks.forEach(hook => {
       hook && hook(route, prev)
     })
   }
 }
 
+/**
+ * 根据配置的 base 值获取绝对路径
+ * @param {?string} base
+ * @returns {string}
+ */
 function normalizeBase (base: ?string): string {
   if (!base) {
     if (inBrowser) {
       // respect <base> tag
+      // 这里是获取 <base /> 标签的 href 属性值
+      // 可能会有人没有在配置项配置 base 属性，但是在 html 配置了 <base /> 标签
       const baseEl = document.querySelector('base')
       base = (baseEl && baseEl.getAttribute('href')) || '/'
       // strip full URL origin
@@ -205,10 +256,12 @@ function normalizeBase (base: ?string): string {
     }
   }
   // make sure there's the starting slash
+  // 确保 base 值以 / 开头
   if (base.charAt(0) !== '/') {
     base = '/' + base
   }
   // remove trailing slash
+  // 去除末尾的 /
   return base.replace(/\/$/, '')
 }
 

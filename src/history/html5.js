@@ -19,6 +19,7 @@ export class HTML5History extends History {
     }
 
     const initLocation = getLocation(this.base)
+    // 监听浏览器地址栏 URL 变化的监听 popstate 事件
     window.addEventListener('popstate', e => {
       const current = this.current
 

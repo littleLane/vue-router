@@ -4,6 +4,7 @@ import Regexp from 'path-to-regexp'
 import { cleanPath } from './util/path'
 import { assert, warn } from './util/warn'
 
+// 创建路由 map
 export function createRouteMap (
   routes: Array<RouteConfig>,
   oldPathList?: Array<string>,
@@ -15,17 +16,22 @@ export function createRouteMap (
   nameMap: Dictionary<RouteRecord>;
 } {
   // the path list is used to control path matching priority
+  // 路由路径 list
   const pathList: Array<string> = oldPathList || []
   // $flow-disable-line
+  // path 路由 map
   const pathMap: Dictionary<RouteRecord> = oldPathMap || Object.create(null)
   // $flow-disable-line
+  // name 路由 path
   const nameMap: Dictionary<RouteRecord> = oldNameMap || Object.create(null)
 
+  // 遍历路由配置对象并增加路由记录
   routes.forEach(route => {
     addRouteRecord(pathList, pathMap, nameMap, route)
   })
 
   // ensure wildcard routes are always at the end
+  // 确保 * 通配符在路由路径 list 尾部，最后匹配
   for (let i = 0, l = pathList.length; i < l; i++) {
     if (pathList[i] === '*') {
       pathList.push(pathList.splice(i, 1)[0])
@@ -41,6 +47,15 @@ export function createRouteMap (
   }
 }
 
+/**
+ * 增加路由记录
+ * @param {Array<string>} pathList
+ * @param {Dictionary<RouteRecord>} pathMap
+ * @param {Dictionary<RouteRecord>} nameMap
+ * @param {RouteConfig} route
+ * @param {RouteRecord} [parent]
+ * @param {string} [matchAs]
+ */
 function addRouteRecord (
   pathList: Array<string>,
   pathMap: Dictionary<RouteRecord>,
@@ -49,7 +64,10 @@ function addRouteRecord (
   parent?: RouteRecord,
   matchAs?: string
 ) {
+  // 每个路由对象的 path 和 name 属性
   const { path, name } = route
+
+  // path 为空检查，component 属性类型检查
   if (process.env.NODE_ENV !== 'production') {
     assert(path != null, `"path" is required in a route configuration.`)
     assert(
@@ -70,6 +88,7 @@ function addRouteRecord (
     pathToRegexpOptions.sensitive = route.caseSensitive
   }
 
+  // 路由记录对象
   const record: RouteRecord = {
     path: normalizedPath,
     regex: compileRouteRegex(normalizedPath, pathToRegexpOptions),
@@ -88,6 +107,7 @@ function addRouteRecord (
         : { default: route.props }
   }
 
+  // 有嵌套子路由就递归增加记录
   if (route.children) {
     // Warn if route is named, does not redirect and has a default child route.
     // If users navigate to this route by name, the default child will
@@ -112,6 +132,7 @@ function addRouteRecord (
     })
   }
 
+  // 处理别名 alias 逻辑，增加对应的记录
   if (route.alias !== undefined) {
     const aliases = Array.isArray(route.alias)
       ? route.alias
@@ -133,11 +154,13 @@ function addRouteRecord (
     })
   }
 
+  // 更新 pathList 和 pathMap
   if (!pathMap[record.path]) {
     pathList.push(record.path)
     pathMap[record.path] = record
   }
 
+  // 更新 nameMap，并去重
   if (name) {
     if (!nameMap[name]) {
       nameMap[name] = record

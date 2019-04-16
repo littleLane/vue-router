@@ -18,6 +18,7 @@ export function createRoute (
     query = clone(query)
   } catch (e) {}
 
+  // route 对象
   const route: Route = {
     name: location.name || (record && record.name),
     meta: (record && record.meta) || {},
@@ -26,11 +27,15 @@ export function createRoute (
     query,
     params: location.params || {},
     fullPath: getFullPath(location, stringifyQuery),
+
+    // 根据记录层级所有匹配的路由记录
     matched: record ? formatMatch(record) : []
   }
   if (redirectedFrom) {
     route.redirectedFrom = getFullPath(redirectedFrom, stringifyQuery)
   }
+
+  // 冻结该 route 对象
   return Object.freeze(route)
 }
 

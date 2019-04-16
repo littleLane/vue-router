@@ -17,12 +17,20 @@ export function createMatcher (
   routes: Array<RouteConfig>,
   router: VueRouter
 ): Matcher {
+  // 创建路由 map
   const { pathList, pathMap, nameMap } = createRouteMap(routes)
 
   function addRoutes (routes) {
     createRouteMap(routes, pathList, pathMap, nameMap)
   }
 
+  /**
+   * 匹配函数
+   * @param {RawLocation} raw
+   * @param {Route} [currentRoute]
+   * @param {Location} [redirectedFrom]
+   * @returns {Route}
+   */
   function match (
     raw: RawLocation,
     currentRoute?: Route,
@@ -31,6 +39,7 @@ export function createMatcher (
     const location = normalizeLocation(raw, currentRoute, false, router)
     const { name } = location
 
+    // 命名路由处理
     if (name) {
       const record = nameMap[name]
       if (process.env.NODE_ENV !== 'production') {
@@ -55,19 +64,23 @@ export function createMatcher (
 
       if (record) {
         location.path = fillParams(record.path, location.params, `named route "${name}"`)
+        
+        // 创建 route
         return _createRoute(record, location, redirectedFrom)
       }
     } else if (location.path) {
+      // 普通路由处理
       location.params = {}
       for (let i = 0; i < pathList.length; i++) {
         const path = pathList[i]
         const record = pathMap[path]
         if (matchRoute(record.regex, location.path, location.params)) {
+          // 匹配成功就创建 route
           return _createRoute(record, location, redirectedFrom)
         }
       }
     }
-    // no match
+    // 没有匹配就创造一个空 route
     return _createRoute(null, location)
   }
 
@@ -152,17 +165,29 @@ export function createMatcher (
     return _createRoute(null, location)
   }
 
+  /**
+   * 创建路由
+   * @param {?RouteRecord} record
+   * @param {Location} location
+   * @param {Location} [redirectedFrom]
+   * @returns {Route}
+   */
   function _createRoute (
     record: ?RouteRecord,
     location: Location,
     redirectedFrom?: Location
   ): Route {
+    // 重定向
     if (record && record.redirect) {
       return redirect(record, redirectedFrom || location)
     }
+
+    // 别名逻辑
     if (record && record.matchAs) {
       return alias(record, location, record.matchAs)
     }
+
+    // 创建路由对象
     return createRoute(record, location, redirectedFrom, router)
   }
 

@@ -3,6 +3,8 @@
 import { inBrowser } from './dom'
 import { saveScrollPosition } from './scroll'
 
+// 判断当前环境是否支持 h5 history
+// 主要是同通过 userAgent 进行判断
 export const supportsPushState = inBrowser && (function () {
   const ua = window.navigator.userAgent
 

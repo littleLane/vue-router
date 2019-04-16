@@ -3,6 +3,8 @@ import { extend } from '../util/misc'
 
 export default {
   name: 'RouterView',
+
+  // 功能组件 纯粹渲染
   functional: true,
   props: {
     name: {
@@ -18,17 +20,25 @@ export default {
     // so that components rendered by router-view can resolve named slots
     const h = parent.$createElement
     const name = props.name
+
+    // route 对象
     const route = parent.$route
+
+    // 缓存
     const cache = parent._routerViewCache || (parent._routerViewCache = {})
 
     // determine current view depth, also check to see if the tree
     // has been toggled inactive but kept-alive.
     let depth = 0
     let inactive = false
+
+    // 获取当前组件的深度
     while (parent && parent._routerRoot !== parent) {
       if (parent.$vnode && parent.$vnode.data.routerView) {
         depth++
       }
+
+      // 处理 keep-alive 逻辑
       if (parent._inactive) {
         inactive = true
       }
@@ -41,13 +51,16 @@ export default {
       return h(cache[name], data, children)
     }
 
+    // 得到匹配的当前组件层级的路由记录
     const matched = route.matched[depth]
     // render empty node if no matched route
+    // 如果没有匹配到路由置空，渲染空
     if (!matched) {
       cache[name] = null
       return h()
     }
 
+    // 获取匹配到的组件，也是即将要渲染的组件
     const component = cache[name] = matched.components[name]
 
     // attach instance registration hook
@@ -84,6 +97,7 @@ export default {
       }
     }
 
+    // 调用 createElement 函数渲染匹配的组件
     return h(component, data, children)
   }
 }

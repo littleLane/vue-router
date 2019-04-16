@@ -24,9 +24,15 @@ export default class VueRouter {
   ready: boolean;
   readyCbs: Array<Function>;
   options: RouterOptions;
+  // 接受字符串类型的数据，标识 history 类别
+  // 有 history、hash、abstract 三种参数
   mode: string;
+  // 实际的路由模式起作用的属性
+  // 有 HashHistory、HTML5History、AbstractHistory 三种类型参数
   history: HashHistory | HTML5History | AbstractHistory;
   matcher: Matcher;
+  // 一个 boolean 类型的值
+  // 如果浏览器不支持 history 模式就回滚为 hash 模式
   fallback: boolean;
   beforeHooks: Array<?NavigationGuard>;
   resolveHooks: Array<?NavigationGuard>;
@@ -39,18 +45,29 @@ export default class VueRouter {
     this.beforeHooks = []
     this.resolveHooks = []
     this.afterHooks = []
+    // 创建 match 匹配函数
     this.matcher = createMatcher(options.routes || [], this)
 
+    // 如果用户没有配置 mode 值，就默认是 hash
     let mode = options.mode || 'hash'
+    // mode === 'history' 配置的模式是 history 模式
+    // !supportsPushState 不支持 pushState 方法，因为 pushState 是 h5 history 模式的方法，这里表示老旧的浏览器不支持 h5 history
+    // options.fallback !== false 配置的 fallback 属性标识是否在浏览器不支持 h5 history 的情况下自动进行降级处理，这里显示的配置了 false 就不会做降级处理
     this.fallback = mode === 'history' && !supportsPushState && options.fallback !== false
+
+    // 如果修正的 this.fallback 是 true 就将路由模式改成 hash 
     if (this.fallback) {
       mode = 'hash'
     }
+
+    // 这里如果当前环境不是浏览器环境就将路由模式改成 abstract
+    // 可能在 node 环境，就会支持 abstract 模式 
     if (!inBrowser) {
       mode = 'abstract'
     }
     this.mode = mode
 
+    // 这里会根据最终的 mode 实例化不同的实例
     switch (mode) {
       case 'history':
         this.history = new HTML5History(this, options.base)
@@ -80,7 +97,10 @@ export default class VueRouter {
     return this.history && this.history.current
   }
 
+  // Router 初始化逻辑
+  // app 为 Vue 组件实例
   init (app: any /* Vue component instance */) {
+    // 做 Vue.use(VueRouter) 插件安装检查
     process.env.NODE_ENV !== 'production' && assert(
       install.installed,
       `not installed. Make sure to call \`Vue.use(VueRouter)\` ` +
@@ -98,6 +118,7 @@ export default class VueRouter {
 
     const history = this.history
 
+    // 根据 history 的类别执行相应的初始化操作和监听
     if (history instanceof HTML5History) {
       history.transitionTo(history.getCurrentLocation())
     } else if (history instanceof HashHistory) {
@@ -111,6 +132,8 @@ export default class VueRouter {
       )
     }
 
+    // 设置当前历史对象的 cb 值, 在 transitionTo 的时候知道在 history 更新完毕的时候调用这个 cb
+    // 然后看这里设置的这个函数的作用就是更新下当前应用实例的 _route 的值
     history.listen(route => {
       this.apps.forEach((app) => {
         app._route = route
@@ -118,18 +141,22 @@ export default class VueRouter {
     })
   }
 
+  // beforeEach 路由钩子
   beforeEach (fn: Function): Function {
     return registerHook(this.beforeHooks, fn)
   }
 
+  // beforeResolve 路由钩子
   beforeResolve (fn: Function): Function {
     return registerHook(this.resolveHooks, fn)
   }
 
+  // afterEach 路由钩子
   afterEach (fn: Function): Function {
     return registerHook(this.afterHooks, fn)
   }
 
+  // VueRouter 类暴露的以下方法实际是调用具体 history 对象的方法  === start ====
   onReady (cb: Function, errorCb?: Function) {
     this.history.onReady(cb, errorCb)
   }
@@ -157,6 +184,7 @@ export default class VueRouter {
   forward () {
     this.go(1)
   }
+  // VueRouter 类暴露的以下方法实际是调用具体 history 对象的方法  === end ====
 
   getMatchedComponents (to?: RawLocation | Route): Array<any> {
     const route: any = to
@@ -227,9 +255,11 @@ function createHref (base: string, fullPath: string, mode) {
   return base ? cleanPath(base + '/' + path) : path
 }
 
+// 将 install 方法赋值给 VueRouter.install 用于 Vue.use()
 VueRouter.install = install
 VueRouter.version = '__VERSION__'
 
+// 如果是在浏览器利用 script 标签引入，而且有全局的 Vue 实例就自动使用插件
 if (inBrowser && window.Vue) {
   window.Vue.use(VueRouter)
 }

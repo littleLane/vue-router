@@ -1,5 +1,10 @@
 /* @flow */
-
+// hash（“#”）符号的本来作用是加在 URL 中指示网页中的位置：http://www.example.com/index.html#print
+// 可以通过 window.location.hash 属性读取
+// hash 特性 1、hash 虽然出现在 url 中，但是不会包含在 HTTP 请求中，只是用来标识页面的位置，并不会重载页面，对服务器是无用的
+// hash 特性 2、可以通过 window.addEventListener("hashchange", funcRef, false) 监听 hash 的变化
+// hash 特性 3、每一次改变 hash（window.location.hash），都会在浏览器的访问历史中增加一个记录
+// 利用 hash 的这些特性可以很好的实现前端路由 更新视图但不重新请求页面
 import type Router from '../index'
 import { History } from './base'
 import { cleanPath } from '../util/path'
@@ -28,6 +33,9 @@ export class HashHistory extends History {
       setupScroll()
     }
 
+    // 根据 supportsPushState 添加对应的监听事件
+    // 浏览器支持 h5 history 就添加 popstate 监听
+    // 浏览器不支持 h5 history 就添加 hashchange 监听
     window.addEventListener(supportsPushState ? 'popstate' : 'hashchange', () => {
       const current = this.current
       if (!ensureSlash()) {
@@ -88,6 +96,10 @@ function checkFallback (base) {
   }
 }
 
+/**
+ * 确保 hash 是正确格式的
+ * @returns {boolean}
+ */
 function ensureSlash (): boolean {
   const path = getHash()
   if (path.charAt(0) === '/') {
@@ -97,6 +109,12 @@ function ensureSlash (): boolean {
   return false
 }
 
+/**
+ * 获取 url 的 hash 值，这里会根据 # 进行拆分
+ * 这里没有用 window.location.hash 直接进行获取，因为在 Firefox 下会被 预解码
+ * @export
+ * @returns {string}
+ */
 export function getHash (): string {
   // We can't use window.location.hash here because it's not
   // consistent across browsers - Firefox will pre-decode it!
@@ -112,6 +130,7 @@ function getUrl (path) {
   return `${base}#${path}`
 }
 
+// 将新路由添加到浏览器访问历史的栈顶
 function pushHash (path) {
   if (supportsPushState) {
     pushState(getUrl(path))
@@ -120,6 +139,7 @@ function pushHash (path) {
   }
 }
 
+// 利用新路由将当前路由替换掉
 function replaceHash (path) {
   if (supportsPushState) {
     replaceState(getUrl(path))

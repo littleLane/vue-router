@@ -3,6 +3,12 @@
 import type Router from '../index'
 import { History } from './base'
 
+/**
+ * 原理：用一个 stack 数组模拟浏览器历史记录栈的功能
+ * @export
+ * @class AbstractHistory
+ * @extends {History}
+ */
 export class AbstractHistory extends History {
   index: number;
   stack: Array<Route>;
