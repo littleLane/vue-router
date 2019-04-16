@@ -34,13 +34,14 @@ export default {
 
     // 获取当前组件的深度
     while (parent && parent._routerRoot !== parent) {
-      if (parent.$vnode && parent.$vnode.data.routerView) {
-        depth++
-      }
-
-      // 处理 keep-alive 逻辑
-      if (parent._inactive) {
-        inactive = true
+      const vnodeData = parent.$vnode && parent.$vnode.data
+      if (vnodeData) {
+        if (vnodeData.routerView) {
+          depth++
+        }
+        if (vnodeData.keepAlive && parent._inactive) {
+          inactive = true
+        }
       }
       parent = parent.$parent
     }
@@ -80,6 +81,17 @@ export default {
     // in case the same component instance is reused across different routes
     ;(data.hook || (data.hook = {})).prepatch = (_, vnode) => {
       matched.instances[name] = vnode.componentInstance
+    }
+
+    // register instance in init hook
+    // in case kept-alive component be actived when routes changed
+    data.hook.init = (vnode) => {
+      if (vnode.data.keepAlive &&
+        vnode.componentInstance &&
+        vnode.componentInstance !== matched.instances[name]
+      ) {
+        matched.instances[name] = vnode.componentInstance
+      }
     }
 
     // resolve props
