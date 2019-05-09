@@ -65,7 +65,7 @@ export class History {
   }
 
   // 处理路由变化中的基础逻辑
-  // 参数 location：是当前的路径
+  // 参数 location：是目标的路径
   // 参数 onComplete：是路由切换完成后的回调
   // 参数 onAbort：是路由切换失败后的回调
   transitionTo (location: RawLocation, onComplete?: Function, onAbort?: Function) {
